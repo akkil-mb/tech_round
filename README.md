@@ -1,2 +1,2 @@
-# tech_round
+# techincal_tasks
 tasks
