@@ -1,0 +1,158 @@
+import json
+import re
+import pandas as pd
+import openpyxl
+
+json_data = json.loads(open('task_input_list.json').read())
+data = dict()
+
+for a in json_data.values():
+    for i,j in enumerate(a):
+        data.update({i:j})
+
+#DEPOSITS :
+dep = []
+for i,j in data.items():
+    if j.lower() in ['deposits and other additions']:
+        dep.append(i)
+dep = dep[1] + 4
+
+    #extract deposit data
+d_date = []
+d_desp = []
+d_amt = []
+for d in range(dep,len(data)):
+    if data[d] == "Total deposits and other additions":
+        break
+    if re.search("^[0-9].*[.][0-9]{2}$", data[d]):
+        a = data[d]
+        a = a.split(',')
+        a = float(''.join(a))
+        d_amt.append(int(round(a)))
+    if re.search("^[A-Z]", data[d]):
+        if re.search("^[A-Z]", data[d-1]):
+            l = len(d_desp)
+            mod = d_desp[l-1] +' '+ data[d]
+            d_desp.append(mod)
+            d_desp.pop(l-1)
+            continue
+        d_desp.append(data[d])
+    if re.search("[0-9]{2}/[0-9]{2}/[0-9]{2}", data[d]):
+        d_date.append(data[d])
+
+    #extract date
+d_sdate = []
+for i in d_date:
+    i = i.split('/')
+    d_sdate.append(i)
+
+
+    #appending all into a list
+deposit_list = []
+for i in range(len(d_date)):
+    temp = []
+    temp.append(d_date[i])
+    temp.append(d_desp[i])
+    temp.append(d_amt[i])
+    for j in range(3):
+        if j != 2:
+            temp.append(int(d_sdate[i][j]))
+        else:
+            temp.append(int(d_sdate[i][j])+2000)
+    deposit_list.append(temp)
+
+
+#WITHDRAWL :
+wit = []
+for i,j in data.items():
+    if j.lower() in ['withdrawals and other subtractions']:
+        wit.append(i)
+wit = wit[0] + 5
+
+    #extract withdrawl data
+w_date = []
+w_desp = []
+w_amt = []
+for d in range(wit,len(data)):
+    if data[d] == "Total other subtractions":
+        break
+    if re.search("^[-].*[.][0-9]{2}$", data[d]):
+        a = data[d]
+        a = a.split(',')
+        a = float(''.join(a))
+        w_amt.append(int(round(a)))
+    if re.search("^[A-Z]", data[d]):
+        if re.search("^[A-Z]", data[d-1]):
+            l = len(w_desp)
+            mod = w_desp[l-1] +' '+ data[d]
+            w_desp.append(mod)
+            w_desp.pop(l-1)
+            continue
+        w_desp.append(data[d])
+    if re.search("[0-9]{2}/[0-9]{2}/[0-9]{2}", data[d]):
+        w_date.append(data[d])
+
+    #extract date
+w_sdate = []
+for i in w_date:
+    i = i.split('/')
+    w_sdate.append(i)
+
+ #appending all into a list
+withdrawl_list = []
+for i in range(len(w_date)):
+    temp = []
+    temp.append(w_date[i])
+    temp.append(w_desp[i])
+    temp.append(w_amt[i])
+    for j in range(3):
+        if j != 2:
+            temp.append(int(w_sdate[i][j]))
+        else:
+            temp.append(int(w_sdate[i][j])+2000)
+    withdrawl_list.append(temp)
+
+
+
+#INSIGHTS :
+insight = {}
+insight['key'] = 'Value'
+for i,j in data.items():
+    if re.search("[.]{1}[a-z]{2,3}$",j):
+        insight['website'] = j
+    if re.search("[\w._]{1,25}@[\w].[a-z]{2,3}", j):
+        insight['email'] = j
+    if re.search("[-]{1}[\d]{4}$",j):
+        ph = j.split(':')
+        if 'phone' in insight:
+            (insight['phone']).append(ph[1])
+        else:
+            insight['phone'] = [ph[1]]
+
+insight['max amount'] = max(d_amt)
+insight['min amount'] = min(w_amt)
+
+
+d_column = ['Date', 'Description', 'Amount', 'Month','Day', 'Year']
+w_column = ['Date', 'Description', 'Amount', 'Month', 'Day', 'Year']
+deposit_df = pd.DataFrame(deposit_list, columns = d_column)
+withdrawl_df = pd.DataFrame(withdrawl_list, columns = w_column)
+insight_df = pd.Series(insight)
+
+
+with pd.ExcelWriter('Output.xlsx') as writer:
+    deposit_df.to_excel(writer, sheet_name = 'DEPOSITS')
+    withdrawl_df.to_excel(writer, sheet_name = 'WITHDRAWLS')
+    insight_df.to_excel(writer, sheet_name = 'INSIGHTS')
+
+
+
+
+
+
+
+
+
+
+
+
